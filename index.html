@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>泰語單字庫</title>
+<style>
+  :root {
+    --accent: #2563eb;
+    --accent-dark: #1d4ed8;
+    --bg: #f7f7f8;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b7280;
+    --border: #e2e2e5;
+    --good: #16a34a;
+    --bad: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding-bottom: 70px;
+  }
+  header {
+    background: var(--card);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  header h1 { font-size: 18px; margin: 0; font-weight: 600; }
+  header .sync-badge {
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 10px;
+  }
+  main { max-width: 480px; margin: 0 auto; padding: 16px; }
+
+  /* ---- Setup screen ---- */
+  .setup-wrap {
+    max-width: 420px;
+    margin: 60px auto;
+    padding: 24px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+  }
+  .setup-wrap h2 { margin-top: 0; font-size: 18px; }
+  .setup-wrap p { color: var(--muted); font-size: 14px; line-height: 1.6; }
+  .setup-wrap input {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 15px;
+    margin: 10px 0;
+    font-family: inherit;
+  }
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 13px;
+    padding: 6px 0;
+    text-decoration: underline;
+  }
+
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    margin-bottom: 16px;
+  }
+  .summary-card .big-num { font-size: 40px; font-weight: 700; color: var(--accent); line-height: 1.1; }
+  .summary-card .label { color: var(--muted); font-size: 14px; margin-top: 4px; }
+  .stat-row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .stat-box { flex: 1; background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px; text-align: center; }
+  .stat-box .num { font-size: 20px; font-weight: 700; }
+  .stat-box .lbl { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  button { font-family: inherit; cursor: pointer; }
+  .btn-primary {
+    width: 100%; padding: 14px; background: var(--accent); color: white;
+    border: none; border-radius: 10px; font-size: 16px; font-weight: 600;
+  }
+  .btn-primary:disabled { background: #b9c6e6; cursor: not-allowed; }
+  .btn-primary:active:not(:disabled) { background: var(--accent-dark); }
+
+  .card-progress { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+  .flashcard {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 40px 20px; text-align: center; min-height: 220px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 14px;
+  }
+  .thai-word { font-size: 40px; font-weight: 700; }
+  .roman-word { font-size: 17px; color: var(--muted); }
+  .meaning-word { font-size: 20px; font-weight: 600; margin-top: 4px; }
+  .play-btn { background: none; border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 14px; color: var(--accent); }
+  .reveal-btn {
+    margin-top: 20px; width: 100%; padding: 14px; background: #eef2ff; color: var(--accent);
+    border: 1px solid var(--accent); border-radius: 10px; font-size: 16px; font-weight: 600;
+  }
+  .grade-row { display: flex; gap: 10px; margin-top: 16px; }
+  .grade-btn { flex: 1; padding: 14px; border: none; border-radius: 10px; font-size: 15px; font-weight: 600; color: white; }
+  .grade-bad { background: var(--bad); }
+  .grade-good { background: var(--good); }
+  .box-tag { display: inline-block; font-size: 12px; color: var(--muted); margin-top: 8px; }
+
+  .add-form { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  .add-form h3 { margin: 0 0 10px 0; font-size: 15px; }
+  .add-form input, .add-form select {
+    width: 100%; padding: 10px; margin-bottom: 8px; border: 1px solid var(--border);
+    border-radius: 8px; font-size: 15px; font-family: inherit;
+  }
+  .word-row {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .word-row .info .th { font-size: 17px; font-weight: 600; }
+  .word-row .info .rm { font-size: 13px; color: var(--muted); }
+  .word-row .info .mn { font-size: 14px; }
+  .word-row .meta { text-align: right; }
+  .word-row .box-pill {
+    font-size: 11px; padding: 2px 8px; border-radius: 10px; background: #eef2ff;
+    color: var(--accent); display: inline-block; margin-bottom: 6px;
+  }
+  .del-btn { background: none; border: none; color: var(--bad); font-size: 13px; padding: 4px 8px; }
+  .empty-state { text-align: center; color: var(--muted); padding: 40px 20px; font-size: 14px; }
+  .filter-row { display: flex; gap: 6px; margin-bottom: 12px; overflow-x: auto; }
+  .filter-chip {
+    padding: 6px 12px; border-radius: 14px; border: 1px solid var(--border);
+    background: var(--card); font-size: 13px; white-space: nowrap; color: var(--muted);
+  }
+  .filter-chip.active { background: var(--accent); color: white; border-color: var(--accent); }
+
+  nav {
+    position: fixed; bottom: 0; left: 0; right: 0; background: var(--card);
+    border-top: 1px solid var(--border); display: flex; z-index: 10;
+  }
+  nav button {
+    flex: 1; background: none; border: none; padding: 10px 4px 12px; font-size: 12px;
+    color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 3px;
+  }
+  nav button.active { color: var(--accent); font-weight: 600; }
+  nav .icon { font-size: 20px; }
+
+  .loading { text-align: center; padding: 40px; color: var(--muted); }
+  .error-banner {
+    background: #fef2f2; border: 1px solid #fecaca; color: var(--bad);
+    padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px;
+  }
+  .toast {
+    position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+    background: #1a1a1a; color: white; padding: 10px 18px; border-radius: 20px;
+    font-size: 13px; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 20;
+  }
+  .toast.show { opacity: 1; }
+</style>
+</head>
+<body>
+
+<header id="app-header" style="display:none">
+  <h1>🇹🇭 泰語單字庫</h1>
+  <div class="sync-badge" id="sync-badge">同步碼設定</div>
+</header>
+
+<main id="main">
+  <div class="loading">載入中…</div>
+</main>
+
+<nav id="nav" style="display:none">
+  <button data-tab="study" class="active"><span class="icon">📚</span>學習</button>
+  <button data-tab="list"><span class="icon">📋</span>單字庫</button>
+  <button data-tab="stats"><span class="icon">📊</span>統計</button>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+/* =========================================================================
+   設定區：請把下面的 firebaseConfig 換成你自己 Firebase 專案的設定值
+   （在 Firebase Console > 專案設定 > 一般 > 你的應用程式 中可以找到）
+   ========================================================================= */
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDeYmK9WO-2g3eSm4zhX8ZSkri0S1pnnfk",
+  authDomain: "thai-ac9c2.firebaseapp.com",
+  projectId: "thai-ac9c2",
+  storageBucket: "thai-ac9c2.firebasestorage.app",
+  messagingSenderId: "139441826491",
+  appId: "1:139441826491:web:b57bfc6763b3d93ebd979e"
+};
+/* ========================================================================= */
+
+const firebaseApp = initializeApp(firebaseConfig);
+const db = getFirestore(firebaseApp);
+
+const SYNC_CODE_KEY = "thai-vocab-sync-code";
+const SEED_FILE_URL = "./words-seed.json"; // 初始詞庫改放這個外部檔案，不再寫死在程式碼裡
+
+const INTERVALS = {1:1, 2:2, 3:4, 4:8, 5:16};
+
+let words = [];
+let stats = { streak: 0, lastStudyDate: null, totalReviews: 0 };
+let currentTab = "study";
+let session = null;
+let listFilter = "全部";
+let syncCode = localStorage.getItem(SYNC_CODE_KEY);
+
+function todayStr() { return new Date().toISOString().slice(0,10); }
+function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function addDays(dateStr, n) { const d = new Date(dateStr); d.setDate(d.getDate() + n); return d.toISOString().slice(0,10); }
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 1800);
+}
+
+/* ---------------- Setup screen (sync code) ---------------- */
+
+function renderSetupScreen(errorMsg) {
+  document.getElementById("app-header").style.display = "none";
+  document.getElementById("nav").style.display = "none";
+  document.getElementById("main").innerHTML = `
+    <div class="setup-wrap">
+      <h2>設定同步碼</h2>
+      <p>輸入一組你自己的同步碼（英數字，越獨特越好），之後在其他裝置輸入「同一組碼」就能看到相同的學習資料。這組碼類似密碼，請自行保管，不要分享給別人。</p>
+      ${errorMsg ? `<div class="error-banner">${errorMsg}</div>` : ""}
+      <input type="text" id="sync-input" placeholder="例如：chris-thai-2026">
+      <button class="btn-primary" id="sync-confirm-btn">開始使用</button>
+      <button class="link-btn" id="sync-random-btn">幫我隨機產生一組</button>
+    </div>
+  `;
+  document.getElementById("sync-confirm-btn").onclick = () => {
+    const val = document.getElementById("sync-input").value.trim();
+    if (!val || val.length < 4) {
+      renderSetupScreen("同步碼至少需要 4 個字元");
+      return;
+    }
+    localStorage.setItem(SYNC_CODE_KEY, val);
+    syncCode = val;
+    boot();
+  };
+  document.getElementById("sync-random-btn").onclick = () => {
+    const rand = "thai-" + Math.random().toString(36).slice(2, 10);
+    document.getElementById("sync-input").value = rand;
+  };
+}
+
+/* ---------------- Data load/save (Firestore) ---------------- */
+
+async function loadSeedWords() {
+  try {
+    const res = await fetch(SEED_FILE_URL);
+    if (!res.ok) throw new Error("seed file not found");
+    const list = await res.json(); // 格式: [[thai, roman, meaning, category], ...]
+    return list.map(([thai, roman, meaning, category]) => ({
+      id: uid(), thai, roman, meaning, category: category || "未分類",
+      box: 0, nextReview: todayStr(), createdAt: todayStr()
+    }));
+  } catch (e) {
+    console.warn("找不到 words-seed.json，將從空白詞庫開始", e);
+    return [];
+  }
+}
+
+async function loadData() {
+  try {
+    const ref = doc(db, "thai-vocab", syncCode);
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const data = snap.data();
+      words = data.words || [];
+      stats = data.stats || stats;
+    } else {
+      words = await loadSeedWords();
+      await saveData();
+    }
+    return true;
+  } catch (e) {
+    console.error("Load failed", e);
+    return false;
+  }
+}
+
+async function saveData() {
+  try {
+    const ref = doc(db, "thai-vocab", syncCode);
+    await setDoc(ref, { words, stats });
+  } catch (e) {
+    console.error("Save failed", e);
+    showToast("同步失敗，請檢查網路連線");
+  }
+}
+
+/* ---------------- Due / helpers ---------------- */
+
+function getDueWords() {
+  const t = todayStr();
+  return words.filter(w => w.nextReview <= t);
+}
+function getCategories() {
+  const set = new Set(words.map(w => w.category || "未分類"));
+  return ["全部", ...Array.from(set)];
+}
+function speak(text) {
+  if (!('speechSynthesis' in window)) { showToast("此裝置不支援語音播放"); return; }
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = "th-TH";
+  speechSynthesis.cancel();
+  speechSynthesis.speak(utter);
+}
+
+/* ---------------- Rendering ---------------- */
+
+function render() {
+  const main = document.getElementById("main");
+  if (currentTab === "study") main.innerHTML = renderStudyTab();
+  else if (currentTab === "list") main.innerHTML = renderListTab();
+  else if (currentTab === "stats") main.innerHTML = renderStatsTab();
+  attachHandlers();
+}
+
+function renderStudyTab() {
+  if (session && session.queue.length > 0) return renderFlashcard();
+  const due = getDueWords();
+  return `
+    <div class="summary-card">
+      <div class="big-num">${due.length}</div>
+      <div class="label">今日待複習單字</div>
+    </div>
+    <button class="btn-primary" id="start-study-btn" ${due.length === 0 ? "disabled" : ""}>
+      ${due.length === 0 ? "今日已完成 🎉" : "開始學習"}
+    </button>
+    ${due.length === 0 ? `<div class="empty-state">明天再回來複習，或到「單字庫」新增更多單字。</div>` : ""}
+  `;
+}
+
+function renderFlashcard() {
+  const w = session.queue[session.index];
+  const progress = `${session.index + 1} / ${session.queue.length}`;
+  return `
+    <div class="card-progress">${progress}</div>
+    <div class="flashcard">
+      <div class="thai-word">${w.thai}</div>
+      <button class="play-btn" id="speak-btn">🔊 播放發音</button>
+      ${session.revealed ? `
+        <div class="roman-word">${w.roman}</div>
+        <div class="meaning-word">${w.meaning}</div>
+        <div class="box-tag">記憶等級 ${w.box || 0} / 5</div>
+      ` : `<button class="reveal-btn" id="reveal-btn">顯示答案</button>`}
+    </div>
+    ${session.revealed ? `
+      <div class="grade-row">
+        <button class="grade-btn grade-bad" id="grade-bad">忘記了</button>
+        <button class="grade-btn grade-good" id="grade-good">記得</button>
+      </div>
+    ` : ""}
+  `;
+}
+
+function renderListTab() {
+  const cats = getCategories();
+  const filtered = listFilter === "全部" ? words : words.filter(w => (w.category || "未分類") === listFilter);
+  const sorted = [...filtered].sort((a,b) => a.createdAt < b.createdAt ? 1 : -1);
+  return `
+    <div class="add-form">
+      <h3>新增單字</h3>
+      <input type="text" id="new-thai" placeholder="泰文（例：สวัสดี）">
+      <input type="text" id="new-roman" placeholder="羅馬拼音（例：sawatdee）">
+      <input type="text" id="new-meaning" placeholder="中文意思（例：你好）">
+      <input type="text" id="new-category" placeholder="分類（例：問候，可留空）">
+      <button class="btn-primary" id="add-word-btn">新增</button>
+    </div>
+    <div class="add-form">
+      <h3>批次匯入</h3>
+      <p style="font-size:13px;color:var(--muted);margin-top:-4px;">
+        每行一個單字，用逗號分隔：<br>泰文,羅馬拼音,中文意思,分類（分類可省略）
+      </p>
+      <textarea id="bulk-import-text" rows="5" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:8px;" placeholder="เป็ด,pet,鴨子,動物&#10;แมว,maeo,貓,動物"></textarea>
+      <button class="btn-primary" id="bulk-import-btn">批次新增</button>
+    </div>
+    <div class="filter-row">
+      ${cats.map(c => `<div class="filter-chip ${c === listFilter ? "active" : ""}" data-cat="${c}">${c}</div>`).join("")}
+    </div>
+    ${sorted.length === 0 ? `<div class="empty-state">這個分類還沒有單字</div>` : sorted.map(w => `
+      <div class="word-row" data-id="${w.id}">
+        <div class="info">
+          <div class="th">${w.thai}</div>
+          <div class="rm">${w.roman}</div>
+          <div class="mn">${w.meaning}</div>
+        </div>
+        <div class="meta">
+          <div class="box-pill">${w.box === 0 ? "新單字" : "等級 " + w.box}</div>
+          <div><button class="del-btn" data-del="${w.id}">刪除</button></div>
+        </div>
+      </div>
+    `).join("")}
+  `;
+}
+
+function renderStatsTab() {
+  const total = words.length;
+  const mastered = words.filter(w => w.box >= 5).length;
+  const due = getDueWords().length;
+  const learning = words.filter(w => w.box > 0 && w.box < 5).length;
+  return `
+    <div class="stat-row">
+      <div class="stat-box"><div class="num">${stats.streak}</div><div class="lbl">連續學習天數</div></div>
+      <div class="stat-box"><div class="num">${total}</div><div class="lbl">總單字數</div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="num">${mastered}</div><div class="lbl">已熟練</div></div>
+      <div class="stat-box"><div class="num">${learning}</div><div class="lbl">學習中</div></div>
+      <div class="stat-box"><div class="num">${due}</div><div class="lbl">今日待複習</div></div>
+    </div>
+    <div class="stat-row">
+      <div class="stat-box"><div class="num">${stats.totalReviews}</div><div class="lbl">累計複習次數</div></div>
+    </div>
+    <div class="empty-state">同步碼：${syncCode}</div>
+  `;
+}
+
+/* ---------------- Events ---------------- */
+
+function attachHandlers() {
+  const startBtn = document.getElementById("start-study-btn");
+  if (startBtn) startBtn.onclick = startSession;
+  const revealBtn = document.getElementById("reveal-btn");
+  if (revealBtn) revealBtn.onclick = () => { session.revealed = true; render(); };
+  const speakBtn = document.getElementById("speak-btn");
+  if (speakBtn) speakBtn.onclick = () => speak(session.queue[session.index].thai);
+  const badBtn = document.getElementById("grade-bad");
+  if (badBtn) badBtn.onclick = () => grade(false);
+  const goodBtn = document.getElementById("grade-good");
+  if (goodBtn) goodBtn.onclick = () => grade(true);
+  const addBtn = document.getElementById("add-word-btn");
+  if (addBtn) addBtn.onclick = addWord;
+  const bulkBtn = document.getElementById("bulk-import-btn");
+  if (bulkBtn) bulkBtn.onclick = bulkImport;
+  document.querySelectorAll("[data-del]").forEach(el => { el.onclick = () => deleteWord(el.getAttribute("data-del")); });
+  document.querySelectorAll("[data-cat]").forEach(el => { el.onclick = () => { listFilter = el.getAttribute("data-cat"); render(); }; });
+}
+
+function startSession() {
+  const due = getDueWords();
+  if (due.length === 0) return;
+  const queue = [...due].sort(() => Math.random() - 0.5);
+  session = { queue, index: 0, revealed: false };
+  render();
+}
+
+async function grade(correct) {
+  const w = session.queue[session.index];
+  if (correct) {
+    w.box = Math.min((w.box || 0) + 1, 5);
+    w.nextReview = addDays(todayStr(), INTERVALS[w.box] || 1);
+  } else {
+    w.box = 1;
+    w.nextReview = addDays(todayStr(), 1);
+  }
+  stats.totalReviews += 1;
+  await saveData();
+
+  session.index += 1;
+  session.revealed = false;
+
+  if (session.index >= session.queue.length) {
+    updateStreak();
+    await saveData();
+    session = null;
+    render();
+    showToast("今日學習完成！🎉");
+  } else {
+    render();
+  }
+}
+
+function updateStreak() {
+  const today = todayStr();
+  if (stats.lastStudyDate === today) {
+    // already counted
+  } else if (stats.lastStudyDate && daysBetween(stats.lastStudyDate, today) === 1) {
+    stats.streak += 1;
+    stats.lastStudyDate = today;
+  } else {
+    stats.streak = 1;
+    stats.lastStudyDate = today;
+  }
+}
+
+async function addWord() {
+  const thai = document.getElementById("new-thai").value.trim();
+  const roman = document.getElementById("new-roman").value.trim();
+  const meaning = document.getElementById("new-meaning").value.trim();
+  const category = document.getElementById("new-category").value.trim() || "未分類";
+  if (!thai || !meaning) { showToast("請至少輸入泰文與中文意思"); return; }
+  words.push({ id: uid(), thai, roman, meaning, category, box: 0, nextReview: todayStr(), createdAt: todayStr() });
+  await saveData();
+  showToast("已新增單字");
+  render();
+}
+
+async function bulkImport() {
+  const raw = document.getElementById("bulk-import-text").value;
+  const lines = raw.split("\n").map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) { showToast("請先貼上要匯入的單字"); return; }
+
+  let added = 0, skipped = 0;
+  for (const line of lines) {
+    const parts = line.split(",").map(p => p.trim());
+    const [thai, roman = "", meaning = "", category = "未分類"] = parts;
+    if (!thai || !meaning) { skipped++; continue; }
+    words.push({ id: uid(), thai, roman, meaning, category: category || "未分類", box: 0, nextReview: todayStr(), createdAt: todayStr() });
+    added++;
+  }
+  await saveData();
+  document.getElementById("bulk-import-text") && (document.getElementById("bulk-import-text").value = "");
+  showToast(`已匯入 ${added} 個單字${skipped ? `，略過 ${skipped} 行格式錯誤` : ""}`);
+  render();
+}
+
+async function deleteWord(id) {
+  words = words.filter(w => w.id !== id);
+  await saveData();
+  render();
+}
+
+document.querySelectorAll("nav button").forEach(btn => {
+  btn.onclick = () => {
+    currentTab = btn.getAttribute("data-tab");
+    session = null;
+    document.querySelectorAll("nav button").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    render();
+  };
+});
+
+document.getElementById("sync-badge").onclick = () => {
+  if (confirm("要更換同步碼嗎？更換後將載入新同步碼底下的資料（如果是全新的碼，會從內建單字庫開始）。")) {
+    localStorage.removeItem(SYNC_CODE_KEY);
+    syncCode = null;
+    session = null;
+    renderSetupScreen();
+  }
+};
+
+/* ---------------- Boot ---------------- */
+
+async function boot() {
+  document.getElementById("main").innerHTML = `<div class="loading">同步中…</div>`;
+  const ok = await loadData();
+  if (!ok) {
+    document.getElementById("main").innerHTML = `
+      <div class="error-banner">
+        無法連線到雲端資料庫。請確認：<br>
+        1. 網路連線正常<br>
+        2. index.html 裡的 firebaseConfig 已填入正確的 Firebase 專案設定<br>
+        3. Firestore 安全規則已設定為允許讀寫
+      </div>
+      <button class="btn-primary" id="retry-btn">重試</button>
+    `;
+    document.getElementById("retry-btn").onclick = boot;
+    return;
+  }
+  document.getElementById("app-header").style.display = "flex";
+  document.getElementById("nav").style.display = "flex";
+  render();
+}
+
+if (!syncCode) {
+  renderSetupScreen();
+} else {
+  boot();
+}
+</script>
+</body>
+</html>
