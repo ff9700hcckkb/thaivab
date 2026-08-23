@@ -127,7 +127,9 @@
   .word-row {
     background: var(--card); border: 1px solid var(--border); border-radius: 10px;
     padding: 12px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center;
+    cursor: pointer;
   }
+  .word-row:active { background: #f0f4ff; }
   .word-row .info .th { font-size: 17px; font-weight: 600; }
   .word-row .info .rm { font-size: 13px; color: var(--muted); }
   .word-row .info .mn { font-size: 14px; }
@@ -202,6 +204,7 @@
 <nav id="nav" style="display:none">
   <button data-tab="study" class="active"><span class="icon">📚</span>學習</button>
   <button data-tab="list"><span class="icon">📋</span>單字庫</button>
+  <button data-tab="add"><span class="icon">➕</span>新增</button>
   <button data-tab="stats"><span class="icon">📊</span>統計</button>
 </nav>
 
@@ -239,6 +242,8 @@ let stats = { streak: 0, lastStudyDate: null, totalReviews: 0 };
 let currentTab = "study";
 let session = null;
 let listFilter = "全部";
+const SESSION_SIZE_KEY = "thai-vocab-session-size";
+let sessionSize = localStorage.getItem(SESSION_SIZE_KEY) || "30";
 let syncCode = localStorage.getItem(SYNC_CODE_KEY);
 
 function todayStr() { return new Date().toISOString().slice(0,10); }
@@ -301,10 +306,17 @@ async function loadSeedWords() {
   }
 }
 
+function withTimeout(promise, ms = 10000) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), ms))
+  ]);
+}
+
 async function loadData() {
   try {
     const ref = doc(db, "thai-vocab", syncCode);
-    const snap = await getDoc(ref);
+    const snap = await withTimeout(getDoc(ref));
     if (snap.exists()) {
       const data = snap.data();
       words = data.words || [];
@@ -323,7 +335,7 @@ async function loadData() {
 async function saveData() {
   try {
     const ref = doc(db, "thai-vocab", syncCode);
-    await setDoc(ref, { words, stats });
+    await withTimeout(setDoc(ref, { words, stats }));
   } catch (e) {
     console.error("Save failed", e);
     showToast("同步失敗，請檢查網路連線");
@@ -354,6 +366,7 @@ function render() {
   const main = document.getElementById("main");
   if (currentTab === "study") main.innerHTML = renderStudyTab();
   else if (currentTab === "list") main.innerHTML = renderListTab();
+  else if (currentTab === "add") main.innerHTML = renderAddTab();
   else if (currentTab === "stats") main.innerHTML = renderStatsTab();
   attachHandlers();
 }
@@ -361,15 +374,22 @@ function render() {
 function renderStudyTab() {
   if (session && session.queue.length > 0) return renderFlashcard();
   const due = getDueWords();
+  const sizeOptions = ["30", "50", "100", "全部"];
   return `
     <div class="summary-card">
       <div class="big-num">${due.length}</div>
       <div class="label">今日待複習單字</div>
     </div>
+    <div style="margin-bottom:12px;">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:6px;">本次複習題數</div>
+      <div class="filter-row">
+        ${sizeOptions.map(s => `<div class="filter-chip ${s === sessionSize ? "active" : ""}" data-size="${s}">${s}</div>`).join("")}
+      </div>
+    </div>
     <button class="btn-primary" id="start-study-btn" ${due.length === 0 ? "disabled" : ""}>
       ${due.length === 0 ? "今日已完成 🎉" : "開始學習"}
     </button>
-    ${due.length === 0 ? `<div class="empty-state">明天再回來複習，或到「單字庫」新增更多單字。</div>` : ""}
+    ${due.length === 0 ? `<div class="empty-state">明天再回來複習，或到「新增」分頁加更多單字。</div>` : ""}
   `;
 }
 
@@ -400,6 +420,27 @@ function renderListTab() {
   const filtered = listFilter === "全部" ? words : words.filter(w => (w.category || "未分類") === listFilter);
   const sorted = [...filtered].sort((a,b) => a.createdAt < b.createdAt ? 1 : -1);
   return `
+    <div class="filter-row">
+      ${cats.map(c => `<div class="filter-chip ${c === listFilter ? "active" : ""}" data-cat="${c}">${c}</div>`).join("")}
+    </div>
+    <div class="empty-state" style="padding:8px 0 16px;text-align:left;">共 ${sorted.length} 個單字（點單字可播放發音）</div>
+    ${sorted.length === 0 ? `<div class="empty-state">這個分類還沒有單字</div>` : sorted.map(w => `
+      <div class="word-row" data-speak="${w.id}">
+        <div class="info">
+          <div class="th">🔊 ${w.thai}</div>
+          <div class="mn">${w.meaning}</div>
+        </div>
+        <div class="meta">
+          <div class="box-pill">${w.box === 0 ? "新單字" : "等級 " + w.box}</div>
+          <div><button class="del-btn" data-del="${w.id}">刪除</button></div>
+        </div>
+      </div>
+    `).join("")}
+  `;
+}
+
+function renderAddTab() {
+  return `
     <div class="add-form">
       <h3>新增單字</h3>
       <input type="text" id="new-thai" placeholder="泰文（例：สวัสดี）">
@@ -412,24 +453,9 @@ function renderListTab() {
       <p style="font-size:13px;color:var(--muted);margin-top:-4px;">
         每行一個單字，用逗號分隔：<br>泰文,中文意思,分類（分類可省略）
       </p>
-      <textarea id="bulk-import-text" rows="5" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:8px;" placeholder="เป็ด,鴨子,動物&#10;แมว,貓,動物"></textarea>
+      <textarea id="bulk-import-text" rows="6" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:8px;" placeholder="เป็ด,鴨子,動物&#10;แมว,貓,動物"></textarea>
       <button class="btn-primary" id="bulk-import-btn">批次新增</button>
     </div>
-    <div class="filter-row">
-      ${cats.map(c => `<div class="filter-chip ${c === listFilter ? "active" : ""}" data-cat="${c}">${c}</div>`).join("")}
-    </div>
-    ${sorted.length === 0 ? `<div class="empty-state">這個分類還沒有單字</div>` : sorted.map(w => `
-      <div class="word-row" data-id="${w.id}">
-        <div class="info">
-          <div class="th">${w.thai}</div>
-          <div class="mn">${w.meaning}</div>
-        </div>
-        <div class="meta">
-          <div class="box-pill">${w.box === 0 ? "新單字" : "等級 " + w.box}</div>
-          <div><button class="del-btn" data-del="${w.id}">刪除</button></div>
-        </div>
-      </div>
-    `).join("")}
   `;
 }
 
@@ -460,6 +486,13 @@ function renderStatsTab() {
 function attachHandlers() {
   const startBtn = document.getElementById("start-study-btn");
   if (startBtn) startBtn.onclick = startSession;
+  document.querySelectorAll("[data-size]").forEach(el => {
+    el.onclick = () => {
+      sessionSize = el.getAttribute("data-size");
+      localStorage.setItem(SESSION_SIZE_KEY, sessionSize);
+      render();
+    };
+  });
   const revealBtn = document.getElementById("reveal-btn");
   if (revealBtn) revealBtn.onclick = () => { session.revealed = true; render(); };
   const speakBtn = document.getElementById("speak-btn");
@@ -472,14 +505,24 @@ function attachHandlers() {
   if (addBtn) addBtn.onclick = addWord;
   const bulkBtn = document.getElementById("bulk-import-btn");
   if (bulkBtn) bulkBtn.onclick = bulkImport;
-  document.querySelectorAll("[data-del]").forEach(el => { el.onclick = () => deleteWord(el.getAttribute("data-del")); });
+  document.querySelectorAll("[data-del]").forEach(el => {
+    el.onclick = (e) => { e.stopPropagation(); deleteWord(el.getAttribute("data-del")); };
+  });
+  document.querySelectorAll("[data-speak]").forEach(el => {
+    el.onclick = () => {
+      const w = words.find(x => x.id === el.getAttribute("data-speak"));
+      if (w) speak(w.thai);
+    };
+  });
   document.querySelectorAll("[data-cat]").forEach(el => { el.onclick = () => { listFilter = el.getAttribute("data-cat"); render(); }; });
 }
 
 function startSession() {
   const due = getDueWords();
   if (due.length === 0) return;
-  const queue = [...due].sort(() => Math.random() - 0.5);
+  const shuffled = [...due].sort(() => Math.random() - 0.5);
+  const limit = sessionSize === "全部" ? shuffled.length : parseInt(sessionSize, 10);
+  const queue = shuffled.slice(0, limit);
   session = { queue, index: 0, revealed: false };
   render();
 }
@@ -593,10 +636,12 @@ async function boot() {
   if (!ok) {
     document.getElementById("main").innerHTML = `
       <div class="error-banner">
-        無法連線到雲端資料庫。請確認：<br>
+        無法連線到雲端資料庫（可能是逾時）。請確認：<br>
         1. 網路連線正常<br>
         2. index.html 裡的 firebaseConfig 已填入正確的 Firebase 專案設定<br>
-        3. Firestore 安全規則已設定為允許讀寫
+        3. Firestore 安全規則已設定為允許讀寫<br>
+        4. Firestore 資料庫建立時選的是「原生模式 (Native mode)」<br>
+        5. 沒有被瀏覽器隱私模式／廣告攔截器擋住（可換一般模式或關閉擴充套件測試）
       </div>
       <button class="btn-primary" id="retry-btn">重試</button>
     `;
