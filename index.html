@@ -167,6 +167,25 @@
     font-size: 13px; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 20;
   }
   .toast.show { opacity: 1; }
+
+  .back-to-top {
+    position: fixed;
+    right: 16px;
+    bottom: 86px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-size: 20px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    z-index: 15;
+  }
+  .back-to-top.show { display: flex; }
 </style>
 </head>
 <body>
@@ -187,6 +206,7 @@
 </nav>
 
 <div class="toast" id="toast"></div>
+<button class="back-to-top" id="back-to-top" aria-label="回到頂端">↑</button>
 
 <script type="module">
 /* =========================================================================
@@ -197,12 +217,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/fireba
 import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyDeYmK9WO-2g3eSm4zhX8ZSkri0S1pnnfk",
-  authDomain: "thai-ac9c2.firebaseapp.com",
-  projectId: "thai-ac9c2",
-  storageBucket: "thai-ac9c2.firebasestorage.app",
-  messagingSenderId: "139441826491",
-  appId: "1:139441826491:web:b57bfc6763b3d93ebd979e"
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
 };
 /* ========================================================================= */
 
@@ -270,9 +290,9 @@ async function loadSeedWords() {
   try {
     const res = await fetch(SEED_FILE_URL);
     if (!res.ok) throw new Error("seed file not found");
-    const list = await res.json(); // 格式: [[thai, roman, meaning, category], ...]
-    return list.map(([thai, roman, meaning, category]) => ({
-      id: uid(), thai, roman, meaning, category: category || "未分類",
+    const list = await res.json(); // 格式: [[thai, meaning, category], ...]
+    return list.map(([thai, meaning, category]) => ({
+      id: uid(), thai, meaning, category: category || "未分類",
       box: 0, nextReview: todayStr(), createdAt: todayStr()
     }));
   } catch (e) {
@@ -362,7 +382,6 @@ function renderFlashcard() {
       <div class="thai-word">${w.thai}</div>
       <button class="play-btn" id="speak-btn">🔊 播放發音</button>
       ${session.revealed ? `
-        <div class="roman-word">${w.roman}</div>
         <div class="meaning-word">${w.meaning}</div>
         <div class="box-tag">記憶等級 ${w.box || 0} / 5</div>
       ` : `<button class="reveal-btn" id="reveal-btn">顯示答案</button>`}
@@ -384,7 +403,6 @@ function renderListTab() {
     <div class="add-form">
       <h3>新增單字</h3>
       <input type="text" id="new-thai" placeholder="泰文（例：สวัสดี）">
-      <input type="text" id="new-roman" placeholder="羅馬拼音（例：sawatdee）">
       <input type="text" id="new-meaning" placeholder="中文意思（例：你好）">
       <input type="text" id="new-category" placeholder="分類（例：問候，可留空）">
       <button class="btn-primary" id="add-word-btn">新增</button>
@@ -392,9 +410,9 @@ function renderListTab() {
     <div class="add-form">
       <h3>批次匯入</h3>
       <p style="font-size:13px;color:var(--muted);margin-top:-4px;">
-        每行一個單字，用逗號分隔：<br>泰文,羅馬拼音,中文意思,分類（分類可省略）
+        每行一個單字，用逗號分隔：<br>泰文,中文意思,分類（分類可省略）
       </p>
-      <textarea id="bulk-import-text" rows="5" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:8px;" placeholder="เป็ด,pet,鴨子,動物&#10;แมว,maeo,貓,動物"></textarea>
+      <textarea id="bulk-import-text" rows="5" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:8px;" placeholder="เป็ด,鴨子,動物&#10;แมว,貓,動物"></textarea>
       <button class="btn-primary" id="bulk-import-btn">批次新增</button>
     </div>
     <div class="filter-row">
@@ -404,7 +422,6 @@ function renderListTab() {
       <div class="word-row" data-id="${w.id}">
         <div class="info">
           <div class="th">${w.thai}</div>
-          <div class="rm">${w.roman}</div>
           <div class="mn">${w.meaning}</div>
         </div>
         <div class="meta">
@@ -508,11 +525,10 @@ function updateStreak() {
 
 async function addWord() {
   const thai = document.getElementById("new-thai").value.trim();
-  const roman = document.getElementById("new-roman").value.trim();
   const meaning = document.getElementById("new-meaning").value.trim();
   const category = document.getElementById("new-category").value.trim() || "未分類";
   if (!thai || !meaning) { showToast("請至少輸入泰文與中文意思"); return; }
-  words.push({ id: uid(), thai, roman, meaning, category, box: 0, nextReview: todayStr(), createdAt: todayStr() });
+  words.push({ id: uid(), thai, meaning, category, box: 0, nextReview: todayStr(), createdAt: todayStr() });
   await saveData();
   showToast("已新增單字");
   render();
@@ -526,9 +542,9 @@ async function bulkImport() {
   let added = 0, skipped = 0;
   for (const line of lines) {
     const parts = line.split(",").map(p => p.trim());
-    const [thai, roman = "", meaning = "", category = "未分類"] = parts;
+    const [thai, meaning = "", category = "未分類"] = parts;
     if (!thai || !meaning) { skipped++; continue; }
-    words.push({ id: uid(), thai, roman, meaning, category: category || "未分類", box: 0, nextReview: todayStr(), createdAt: todayStr() });
+    words.push({ id: uid(), thai, meaning, category: category || "未分類", box: 0, nextReview: todayStr(), createdAt: todayStr() });
     added++;
   }
   await saveData();
@@ -561,6 +577,13 @@ document.getElementById("sync-badge").onclick = () => {
     renderSetupScreen();
   }
 };
+
+const backToTopBtn = document.getElementById("back-to-top");
+window.addEventListener("scroll", () => {
+  if (window.scrollY > 300) backToTopBtn.classList.add("show");
+  else backToTopBtn.classList.remove("show");
+});
+backToTopBtn.onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
 
 /* ---------------- Boot ---------------- */
 
